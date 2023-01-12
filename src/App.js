@@ -1,25 +1,134 @@
-import logo from './logo.svg';
-import './App.css';
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
+import xml2js from 'xml2js';
 
-function App() {
+const MONITORING_URL = 'https://assignments.reaktor.com/birdnest/drones';
+const REGISTRY_URL = 'https://assignments.reaktor.com/birdnest/pilots/';
+
+function DroneMonitor() {
+  const [drones, setDrones] = useState([]);
+  const [pilot, setPilot] = useState([]);
+
+  function fetchDrones() {
+    axios
+      .get('http://localhost:8080/' + MONITORING_URL, {
+        mode: 'cors',
+      })
+      .then(async (monitoringResponse) => {
+        if (monitoringResponse) {
+          const monitoringData = await monitoringResponse.data;
+          const parsedData = await xml2js.parseStringPromise(monitoringData);
+
+          const droneName = parsedData.report.capture[0].drone;
+          console.log('droneName ', droneName);
+          const dronesInNoFlyZone = droneName.filter((drone) => {
+            const dx = drone.positionX - 250000;
+            const dy = drone.positionY - 250000;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            console.log('distance ', distance);
+
+            return distance < 100000;
+          });
+
+          setDrones(dronesInNoFlyZone);
+          console.log('dronesInNoFlyZone', dronesInNoFlyZone);
+        }
+      })
+      .catch((error) => {
+        console.log(error);
+      });
+  }
+  console.log('drones', drones);
+
+  useEffect(() => {
+    const storedPilot = localStorage.getItem('pilot');
+    const lastSeen = localStorage.getItem('lastSeen');
+
+    if (storedPilot && lastSeen) {
+      const timeDiff = (Date.now() - lastSeen) / 1000 / 60;
+      if (timeDiff < 10) {
+        const parsedPilot = JSON.parse(storedPilot);
+        setPilot(parsedPilot);
+      }
+    }
+    fetchPilot();
+  }, []);
+
+  async function fetchPilot() {
+    if (drones.length > 0) {
+      const pilotPromises = drones.map(async (drone) => {
+        try {
+          const response = await axios.get(
+            'http://localhost:8080/' + REGISTRY_URL + drone.serialNumber,
+            {
+              mode: 'cors',
+            }
+          );
+          return response.data;
+        } catch (error) {
+          return {};
+        }
+      });
+
+      const pilotData = await Promise.all(pilotPromises);
+      setPilot([...pilot, ...pilotData]);
+      localStorage.setItem('pilot', JSON.stringify([...pilot, ...pilotData]));
+      localStorage.setItem('lastSeen', Date.now());
+    }
+    console.log('pilot', pilot);
+  }
+
+  const distanceFromNest = (drone) => {
+    const dx = drone.positionX - 250000;
+    const dy = drone.positionY - 250000;
+    return Math.round(Math.sqrt(dx * dx + dy * dy));
+  };
+
+  useEffect(() => {
+    fetchDrones();
+    // const intervalId = setInterval(fetchDrones, 2000);
+    // return () => clearInterval(intervalId);
+  }, []);
+
+  useEffect(() => {
+    fetchPilot();
+  }, [drones]);
+
   return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.js</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
+    <div>
+      {pilot.length > 0 && (
+        <table>
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Email</th>
+              <th>Phone</th>
+            </tr>
+          </thead>
+          <tbody>
+            {pilot.map((pilot) => (
+              <tr>
+                <td>{pilot.firstName}</td>
+                <td>{pilot.email}</td>
+                <td>{pilot.phoneNumber}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+
+      {drones.length === 0 && <p>No drones in no-fly zone</p>}
+      <h2>Drones in No-Fly Zone:</h2>
+      <ul>
+        {drones.map((drone) => (
+          <li key={drone.serialNumber}>
+            Serial Number: {drone.serialNumber} - Distance from Nest:{' '}
+            {distanceFromNest(drone)} meters
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }
 
-export default App;
+export default DroneMonitor;
