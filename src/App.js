@@ -20,25 +20,21 @@ function DroneMonitor() {
           const parsedData = await xml2js.parseStringPromise(monitoringData);
 
           const droneName = parsedData.report.capture[0].drone;
-          console.log('droneName ', droneName);
           const dronesInNoFlyZone = droneName.filter((drone) => {
             const dx = drone.positionX - 250000;
             const dy = drone.positionY - 250000;
             const distance = Math.sqrt(dx * dx + dy * dy);
-            console.log('distance ', distance);
 
             return distance < 100000;
           });
 
           setDrones(dronesInNoFlyZone);
-          console.log('dronesInNoFlyZone', dronesInNoFlyZone);
         }
       })
       .catch((error) => {
         console.log(error);
       });
   }
-  console.log('drones', drones);
 
   useEffect(() => {
     const storedPilot = localStorage.getItem('pilot');
@@ -75,13 +71,12 @@ function DroneMonitor() {
       localStorage.setItem('pilot', JSON.stringify([...pilot, ...pilotData]));
       localStorage.setItem('lastSeen', Date.now());
     }
-    console.log('pilot', pilot);
   }
 
   const distanceFromNest = (drone) => {
     const dx = drone.positionX - 250000;
     const dy = drone.positionY - 250000;
-    return Math.round(Math.sqrt(dx * dx + dy * dy));
+    return Math.round(Math.sqrt(dx * dx + dy * dy)) / 1000;
   };
 
   useEffect(() => {
