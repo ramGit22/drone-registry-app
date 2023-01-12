@@ -81,8 +81,8 @@ function DroneMonitor() {
 
   useEffect(() => {
     fetchDrones();
-    // const intervalId = setInterval(fetchDrones, 2000);
-    // return () => clearInterval(intervalId);
+    const intervalId = setInterval(fetchDrones, 2000);
+    return () => clearInterval(intervalId);
   }, []);
 
   useEffect(() => {
