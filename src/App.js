@@ -89,13 +89,6 @@ function DroneMonitor() {
     fetchPilot();
   }, [drones]);
 
-  // useEffect(() => {
-  //   const intervalId = setInterval(() => {
-  //     window.location.reload();
-  //   }, 2000);
-  //   return () => clearInterval(intervalId);
-  // }, []);
-
   return (
     <div>
       {pilot.length > 0 && (
